@@ -49,6 +49,7 @@ input:hover {
     animation-name: add_btn_hover;
     animation-duration: 300ms;
     border-radius: 5px;
+    cursor: pointer;
 }
 
 @keyframes add_btn_hover {
