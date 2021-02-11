@@ -20,7 +20,11 @@ let chart = new Chart(ctx, {
                 {
                     type: 'time',
                     time: {
-                        unit: 'day'
+                        unit: 'week',
+                        format: "DD-MM-YYYY",
+                        displayFormats: {
+                            quarter: 'MMM DD YYYY'
+                        }
                     },
                     ticks: {
                         autoSkip: true,
