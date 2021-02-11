@@ -1,0 +1,207 @@
+body {
+    font-family: SansSerif, sans-serif;
+    font-size: 14pt;
+}
+
+table {
+    margin: 2% auto 0;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+td, th {
+    padding: 12px;
+    border-top: 1px solid #b0b0b0;
+}
+
+input {
+    font-size: inherit;
+    font-family: inherit;
+}
+
+input:hover {
+    opacity: 50%;
+}
+
+.table_input {
+    border: none;
+    outline: none;
+    text-align: center;
+}
+
+.delete_cell {
+    padding: 0;
+    border: none;
+}
+
+#add_btn {
+    border-radius: 100%;
+    border-color: white;
+    background-color: #5d5d70;
+    outline: none;
+    width: 60px;
+    height: 60px;
+    display: block;
+    margin: auto;
+}
+
+#add_btn:hover {
+    animation-name: add_btn_hover;
+    animation-duration: 300ms;
+    border-radius: 5px;
+}
+
+@keyframes add_btn_hover {
+    from {
+        border-radius: 100%;
+    }
+    to {
+        border-radius: 5px;
+    }
+}
+
+.delete_btn {
+    padding: 0;
+    border: none;
+    outline: none;
+    background-color: unset;
+    filter: opacity(50%);
+}
+
+.delete_btn:hover {
+    filter: opacity(100%);
+    cursor: pointer;
+}
+
+.dummy_element {
+    filter: opacity(0%);
+    cursor: auto;
+}
+
+.dummy_element:hover {
+    cursor: auto;
+}
+
+.remove_row_animation {
+    animation-name: remove_row;
+    animation-duration: 250ms;
+}
+
+@keyframes remove_row {
+    from {
+        background-color: white;
+        color: white;
+    }
+    to {
+        background-color: #f65a5a;
+        color: #f65a5a;
+    }
+}
+
+#modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(50, 47, 47, 0.4);
+}
+
+#modal_content {
+    position: relative;
+    margin: 80px auto 0 auto;
+    padding: 0;
+    width: 50%;
+    border-radius: 5px;
+    background-color: white;
+    animation-name: open_modal;
+    animation-duration: 400ms;
+}
+
+#modal_footer, #modal_header, #modal_body {
+    padding: 16px;
+}
+
+#modal_header {
+    display: flex;
+}
+
+#modal_body {
+    padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.modal_input {
+    width: 50%;
+    padding: 12px 20px;
+    margin-bottom: 30px;
+    border-radius: 5px;
+}
+
+.modal_label {
+    color: #5a5a5a;
+    margin-bottom: 5px;
+}
+
+#input_date {
+    width: 100px;
+}
+
+#close_btn, #save_btn {
+    display: block;
+    border: none;
+    border-radius: 10px;
+    outline: none;
+    height: 40px;
+    background: #5d5d70;
+}
+
+#close_btn {
+    margin-left: auto;
+}
+
+#save_btn {
+    width: 60px;
+    font-size: 14pt;
+    text-transform: uppercase;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+}
+
+#save_btn:hover, #close_btn:hover {
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #d0dbef;
+}
+
+@keyframes open_modal {
+    from {
+        top: -40%;
+        opacity: 0;
+    }
+    to {
+        top: 0;
+        opacity: 1;
+    }
+}
+
+#exists_error {
+    display: none;
+    color: #d06a6a;
+}
+
+.valid_input {
+    border: 5px solid #7bbf7b;
+}
+
+.invalid_input {
+    border: 5px solid #d06a6a;
+}
+
+#chart {
+    display: block;
+    margin: 40px auto 0 auto;
+}
