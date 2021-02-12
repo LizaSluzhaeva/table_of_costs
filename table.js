@@ -70,7 +70,17 @@ let chart = new Chart(ctx, {
                         maxTicksLimit: 24
                     }
                 }
-            ]
+            ],
+            yAxes: [{
+                gridLines: {
+                    color: 'black',
+                    borderDash: [2, 5],
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Стоимость в рублях',
+                    fontColor: "green"
+            },}]
         }
     }
 });
