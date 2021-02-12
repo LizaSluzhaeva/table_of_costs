@@ -123,6 +123,7 @@ function makeInvalid(input) {
 }
 
 let editingCell;
+let editingValue;
 
 document.onclick = function (event) {
     let target = event.target;
@@ -130,18 +131,23 @@ document.onclick = function (event) {
         let input = editingCell.childNodes[0];
         if (target == editingCell || target == input) return;
         let classname = editingCell.className.split(' ')[0];
-        if (!validateCell(classname, input)) {
-            makeInvalid(editingCell);
-            return;
+        if (input.value !== editingValue) {
+            if (!validateCell(editingCell)) {
+                makeInvalid(editingCell);
+                return;
+            }
+            updateDataset(editingCell, editingValue);
         }
         editingCell.innerText = input.value;
         editingCell.className = classname;
         editingCell = undefined;
+        editingValue = undefined;
     }
     addWithEditingErrorMsg.style.display = 'none';
     if (!table.contains(target) || target.nodeName != 'TD') return;
     target.className += ' valid_input';
     editingCell = target;
+    editingValue = target.innerText;
     let input = document.createElement('input');
     input.className = 'table_input';
     input.value = editingCell.innerText;
@@ -153,12 +159,17 @@ document.onclick = function (event) {
 function validateCell(cell) {
     let classname = cell.className.split(' ')[0];
     let input = cell.childNodes[0];
-    if (classname === 'date') {
-        return validateDate(input.value);
-    } else if (classname === 'company') {
-        return validateCompany(input.value);
-    } else if (classname === 'cost') {
-        return validateCost(input.value);
+    let row = cell.parentNode;
+    switch (classname) {
+        case 'date':
+            return validateDate(input.value)
+                && !existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText);
+        case 'company':
+            return validateCompany(input.value)
+                && !existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText);
+        case 'cost':
+            return validateCost(input.value)
+                && !existsElement(row.childNodes[0].innerText, row.childNodes[1].innerText, input.value);
     }
 }
 
@@ -201,19 +212,21 @@ function createRow(date, company, cost) {
         x: date,
         y: cost
     })
-    dataset.data.sort(function (d1, d2) {
-        let date1 = new Date(d1.x);
-        let date2 = new Date(d2.x);
-        if (date1 > date2) {
-            return 1;
-        }
-        if (date2 > date1) {
-            return -1;
-        }
-        return 0;
-    })
+    dataset.data.sort(dataSortCompareFunction);
     chart.update();
     return row;
+}
+
+function dataSortCompareFunction(d1, d2) {
+    let date1 = new Date(d1.x);
+    let date2 = new Date(d2.x);
+    if (date1 > date2) {
+        return 1;
+    }
+    if (date2 > date1) {
+        return -1;
+    }
+    return 0;
 }
 
 function createCell(content, classname) {
@@ -252,6 +265,8 @@ function removeRow(row) {
         let table = document.querySelector('table');
         if (row.contains(editingCell)) {
             editingCell = undefined;
+            editingValue = undefined;
+            addWithEditingErrorMsg.style.display = 'none';
         }
         removeRowFromDataset(row);
         table.removeChild(row);
@@ -272,6 +287,67 @@ function removeRowFromDataset(row) {
         dataset.data.splice(dataset.data.findIndex(function (point) {
             return point.x === date && point.y == cost;
         }), 1);
+    }
+    chart.update();
+}
+
+function updateDataset(cell, prevValue) {
+    let classname = cell.className.split(' ')[0];
+    let input = cell.childNodes[0];
+    let row = cell.parentNode;
+    let dataset;
+    let index;
+    switch (classname) {
+        case 'date':
+            dataset = datasets.find(function (d) {
+                return d.label === row.childNodes[1].innerText;
+            });
+            index = dataset.data.findIndex(function (point) {
+                return point.x === prevValue && point.y == row.childNodes[2].innerText;
+            });
+            dataset.data[index].x = input.value;
+            dataset.data.sort(dataSortCompareFunction);
+            break;
+        case 'company':
+            let prevDataset = datasets.find(function (d) {
+                return d.label === prevValue;
+            });
+            if (prevDataset.data.length === 1) {
+                datasets.splice(datasets.findIndex(function (d) {return d.label === prevValue;}), 1);
+            } else {
+                prevDataset.data.splice(prevDataset.data.findIndex(function (point) {
+                    return point.x === row.childNodes[0].innerText && point.y == row.childNodes[2];
+                }), 1);
+            }
+            let newDataset = datasets.find(function (d) {
+                return d.label === input.value;
+            });
+            if (!newDataset) {
+                let color = randColor();
+                newDataset = {
+                    label: input.value,
+                    backgroundColor: color,
+                    borderColor: color,
+                    data: [],
+                    fill: false
+                };
+                datasets.push(newDataset);
+            }
+            newDataset.data.push({
+                x: row.childNodes[0].innerText,
+                y: row.childNodes[2].innerText
+            });
+            newDataset.data.sort(dataSortCompareFunction);
+            break;
+        case 'cost':
+            dataset = datasets.find(function (d) {
+                return d.label === row.childNodes[1].innerText;
+            });
+            index = dataset.data.findIndex(function (point) {
+                return point.x === row.childNodes[0].innerText && point.y == prevValue;
+            });
+            dataset.data[index].y = input.value;
+            break;
     }
     chart.update();
 }
