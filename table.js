@@ -244,9 +244,27 @@ function removeRow(row) {
         if (row.contains(editingCell)) {
             editingCell = undefined;
         }
+        removeRowFromDataset(row);
         table.removeChild(row);
     });
     row.className = 'remove_row_animation';
+}
+
+function removeRowFromDataset(row) {
+    let company = row.childNodes[1].innerText;
+    let date = row.childNodes[0].innerText;
+    let cost = row.childNodes[2].innerText;
+    let dataset = datasets.find(function (d) {
+        return d.label === company;
+    });
+    if (dataset.data.length === 1) {
+        datasets.splice(datasets.indexOf(dataset), 1);
+    } else {
+        dataset.data.splice(dataset.data.findIndex(function (point) {
+            return point.x === date && point.y == cost;
+        }), 1);
+    }
+    chart.update();
 }
 
 table.appendChild(createRow('07.01.2019', 'Автоваз', '2100'));
