@@ -53,9 +53,15 @@ let dateInput = document.getElementById('input_date');
 let companyInput = document.getElementById('input_company');
 let costInput = document.getElementById('input_cost');
 let existsErrorMsg = document.getElementById('exists_error');
+let addWithEditingErrorMsg = document.getElementById('add_with_editing_error');
 
 addBtn.onclick = function () {
-    modal.style.display = 'block';
+    if (editingCell && !validateCell(editingCell)) {
+        addWithEditingErrorMsg.style.display = 'block';
+    } else {
+        addWithEditingErrorMsg.style.display = 'none';
+        modal.style.display = 'block';
+    }
 };
 
 closeBtn.onclick = closeModal;
@@ -132,6 +138,7 @@ document.onclick = function (event) {
         editingCell.className = classname;
         editingCell = undefined;
     }
+    addWithEditingErrorMsg.style.display = 'none';
     if (!table.contains(target) || target.nodeName != 'TD') return;
     target.className += ' valid_input';
     editingCell = target;
@@ -143,7 +150,9 @@ document.onclick = function (event) {
     input.focus();
 };
 
-function validateCell(classname, input) {
+function validateCell(cell) {
+    let classname = cell.className.split(' ')[0];
+    let input = cell.childNodes[0];
     if (classname === 'date') {
         return validateDate(input.value);
     } else if (classname === 'company') {

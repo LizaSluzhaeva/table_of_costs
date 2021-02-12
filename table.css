@@ -189,9 +189,10 @@ input:hover {
     }
 }
 
-#exists_error {
+#exists_error, #add_with_editing_error {
     display: none;
     color: #d06a6a;
+    text-align: center;
 }
 
 .valid_input {
