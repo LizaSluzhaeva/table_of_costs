@@ -61,6 +61,12 @@ input:hover {
     }
 }
 
+.delete_btn_img {
+    display: none;
+    width: 20px;
+    height: 100%;
+}
+
 .delete_btn {
     padding: 0;
     border: none;

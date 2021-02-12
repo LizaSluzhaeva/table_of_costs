@@ -1,3 +1,5 @@
+// HTML elements
+
 let table = document.querySelector('table');
 let modal = document.getElementById('modal');
 let addBtn = document.getElementById('add_btn');
@@ -15,6 +17,26 @@ const COMPANY_FORMAT_ERROR = 'Название компании должно с�
 const COST_FORMAT_ERROR = 'Цена должна быть положительным целым числом!';
 const DUPLICATE_ROW_ERROR = 'В таблице уже существует строка с такими значениями!';
 
+// global variables
+
+let editingCell;
+let editingValue;
+let datasets = []
+let timeout;
+
+// utils
+
+function notify(message) {
+    if (timeout) {
+        clearTimeout(timeout);
+    }
+    notificationLabel.innerText = message;
+    notificationBlock.style.display = 'flex';
+    timeout = setTimeout(function () {
+        notificationBlock.style.display = 'none';
+    }, 5000);
+}
+
 function randColor() {
     let r = Math.floor(Math.random() * (256)),
         g = Math.floor(Math.random() * (256)),
@@ -22,7 +44,7 @@ function randColor() {
     return '#' + r.toString(16) + g.toString(16) + b.toString(16);
 }
 
-let datasets = []
+// chart initialization
 
 let ctx = document.getElementById('chart').getContext('2d');
 let chart = new Chart(ctx, {
@@ -53,7 +75,59 @@ let chart = new Chart(ctx, {
     }
 });
 
-function existsElement(date, company, cost) {
+// datasets utils
+
+function sortDataset(dataset) {
+    dataset.data.sort(function (d1, d2) {
+        let split1 = d1.x.split('.');
+        let split2 = d2.x.split('.');
+        split1[1] -= 1;
+        split2[1] -= 1;
+        let date1 = new Date(split1[2], split1[1], split1[0]);
+        let date2 = new Date(split2[2], split2[1], split2[0]);
+        if (date1 > date2) {
+            return 1;
+        }
+        if (date2 > date1) {
+            return -1;
+        }
+        return 0;
+    })
+}
+
+function findDatasetByCompany(company) {
+    return datasets.find(function (d) {
+        return d.label === company;
+    });
+}
+
+function findPointIndexInDataset(dataset, date, cost) {
+    return dataset.data.findIndex(function (point) {
+        return point.x === date && point.y == cost;
+    })
+}
+
+function createPoint(date, company, cost) {
+    let dataset = findDatasetByCompany(company);
+    if (!dataset) {
+        let color = randColor();
+        dataset = {
+            label: company,
+            backgroundColor: color,
+            borderColor: color,
+            data: [],
+            fill: false
+        };
+        datasets.push(dataset);
+    }
+    dataset.data.push({
+        x: date,
+        y: cost
+    });
+    sortDataset(dataset);
+}
+
+function existsPoint(date, company, cost) {
     return datasets.some(function (dataset) {
         return dataset.label === company && dataset.data.some(function (point) {
             return point.x === date && point.y == cost;
@@ -61,144 +135,27 @@ function existsElement(date, company, cost) {
     });
 }
 
-addBtn.onclick = function () {
-    if (editingCell && validateCell(editingCell)) {
-        notify(ADD_WHEN_EDITING_ERROR);
+function removePoint(date, company, cost) {
+    let dataset = findDatasetByCompany(company);
+    if (dataset.data.length === 1) {
+        datasets.splice(datasets.indexOf(dataset), 1);
     } else {
-        modal.style.display = 'block';
-    }
-};
-
-closeBtn.onclick = closeModal;
-
-saveBtn.onclick = function () {
-    let isDateValid = validateDate(dateInput.value);
-    let errorMsg = '';
-    if (isDateValid) {
-        makeValid(dateInput);
-    } else {
-        makeInvalid(dateInput);
-        errorMsg += DATE_FORMAT_ERROR + '\n';
-    }
-    let isCompanyValid = validateCompany(companyInput.value);
-    if (isCompanyValid) {
-        makeValid(companyInput);
-    } else {
-        makeInvalid(companyInput);
-        errorMsg += COMPANY_FORMAT_ERROR + '\n';
-    }
-    let isCostValid = validateCost(costInput.value);
-    if (isCostValid) {
-        makeValid(costInput);
-    } else {
-        makeInvalid(costInput);
-        errorMsg += COST_FORMAT_ERROR + '\n';
-    }
-    if (errorMsg) {
-        notify(errorMsg.substr(0, errorMsg.length - 1));
-    }
-    let isExists = existsElement(dateInput.value, companyInput.value, costInput.value);
-    if (isExists) {
-        notify(DUPLICATE_ROW_ERROR);
-    }
-    if (isDateValid && isCompanyValid && isCostValid && !isExists) {
-        table.appendChild(createRow(dateInput.value, companyInput.value, costInput.value));
-        closeModal();
-    }
-};
-
-function closeModal() {
-    modal.style.display = 'none';
-    clearInput();
-}
-
-function clearInput() {
-    dateInput.value = '';
-    companyInput.value = '';
-    costInput.value = '';
-    makeValid(dateInput);
-    makeValid(companyInput);
-    makeValid(costInput);
-}
-
-function makeValid(input) {
-    input.className = input.className.split(' ')[0];
-}
-
-function makeInvalid(input) {
-    if (!input.className.endsWith('invalid_input')) {
-        input.className += ' invalid_input';
+        dataset.data.splice(findPointIndexInDataset(dataset, date, cost), 1);
     }
 }
 
-let editingCell;
-let editingValue;
-
-document.onclick = function (event) {
-    let target = event.target;
-    if (editingCell) {
-        let input = editingCell.childNodes[0];
-        if (target == editingCell || target == input) return;
-        let classname = editingCell.className.split(' ')[0];
-        if (input.value !== editingValue) {
-            let message = validateCell(editingCell);
-            if (message) {
-                makeInvalid(editingCell);
-                if (target !== addBtn && target !== addBtn.childNodes[0]) {
-                    notify(message);
-                }
-                return;
-            }
-            updateDataset(editingCell, editingValue);
-        }
-        editingCell.innerText = input.value;
-        editingCell.className = classname;
-        editingCell = undefined;
-        editingValue = undefined;
-    }
-    if (!table.contains(target) || target.nodeName != 'TD') return;
-    target.className += ' valid_input';
-    editingCell = target;
-    editingValue = target.innerText;
-    let input = document.createElement('input');
-    input.className = 'table_input';
-    input.value = editingCell.innerText;
-    editingCell.innerText = '';
-    editingCell.appendChild(input);
-    input.focus();
-};
-
-function validateCell(cell) {
-    let classname = cell.className.split(' ')[0];
-    let input = cell.childNodes[0];
-    let row = cell.parentNode;
-    switch (classname) {
-        case 'date':
-            if (!validateDate(input.value)) {
-                return DATE_FORMAT_ERROR;
-            }
-            if (existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText)) {
-                return DUPLICATE_ROW_ERROR;
-            }
-            break;
-        case 'company':
-            if (!validateCompany(input.value)) {
-                return COMPANY_FORMAT_ERROR;
-            }
-            if (existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText)) {
-                return DUPLICATE_ROW_ERROR;
-            }
-            break;
-        case 'cost':
-            if (!validateCost(input.value)) {
-                return COST_FORMAT_ERROR;
-            }
-            if (existsElement(row.childNodes[0].innerText, row.childNodes[1].innerText, input.value)) {
-                return DUPLICATE_ROW_ERROR;
-            }
-    }
-    return '';
+function updatePointDate(prevDate, company, cost, newDate) {
+    let dataset = findDatasetByCompany(company);
+    dataset.data[findPointIndexInDataset(dataset, prevDate, cost)].x = newDate;
+    sortDataset(dataset);
 }
+
+function updatePointCost(date, company, prevCost, newCost) {
+    let dataset = findDatasetByCompany(company);
+    dataset.data[findPointIndexInDataset(dataset, date, prevCost)].y = newCost;
+}
+
+// validation utils
 
 function validateDate(value) {
     let dateSplit = value.split('.');
@@ -215,45 +172,192 @@ function validateCost(value) {
     return value.search(/^\d+$/) >= 0;
 }
 
+function validateCell(cell) {
+    let classname = cell.className.split(' ')[0];
+    let newValue = cell.childNodes[0].value;
+    let row = cell.parentNode;
+    let rowDate = row.childNodes[0].innerText;
+    let rowCompany = row.childNodes[1].innerText;
+    let rowCost = row.childNodes[2].innerText;
+    switch (classname) {
+        case 'date':
+            return validateDate(newValue) && !existsPoint(newValue, rowCompany, rowCost);
+        case 'company':
+            return validateCompany(newValue) && !existsPoint(rowDate, newValue, rowCost);
+        case 'cost':
+            return validateCost(newValue) && !existsPoint(rowDate, rowCompany, newValue);
+    }
+}
+
+function clearValidationStyle(element) {
+    element.className = element.className.split(' ')[0];
+}
+
+function makeInvalid(element) {
+    if (!element.className.endsWith('invalid_input')) {
+        element.className += ' invalid_input';
+    }
+}
+
+function makeValid(element) {
+    if (!element.className.endsWith('valid_input')) {
+        element.className += ' valid_input';
+    }
+}
+
+// modal window utils
+
+function closeModal() {
+    modal.style.display = 'none';
+    dateInput.value = '';
+    companyInput.value = '';
+    costInput.value = '';
+    clearValidationStyle(dateInput);
+    clearValidationStyle(companyInput);
+    clearValidationStyle(costInput);
+}
+
+// click event handlers
+
+addBtn.onclick = function () {
+    if (editingCell && !validateCell(editingCell)) {
+        notify(ADD_WHEN_EDITING_ERROR);
+    } else {
+        modal.style.display = 'block';
+    }
+};
+
+closeBtn.onclick = closeModal;
+
+saveBtn.onclick = function () {
+    let isDateValid = validateDate(dateInput.value);
+    let errorMsg = '';
+    if (isDateValid) {
+        clearValidationStyle(dateInput);
+    } else {
+        makeInvalid(dateInput);
+        errorMsg += DATE_FORMAT_ERROR + '\n';
+    }
+    let isCompanyValid = validateCompany(companyInput.value);
+    if (isCompanyValid) {
+        clearValidationStyle(companyInput);
+    } else {
+        makeInvalid(companyInput);
+        errorMsg += COMPANY_FORMAT_ERROR + '\n';
+    }
+    let isCostValid = validateCost(costInput.value);
+    if (isCostValid) {
+        clearValidationStyle(costInput);
+    } else {
+        makeInvalid(costInput);
+        errorMsg += COST_FORMAT_ERROR + '\n';
+    }
+    if (errorMsg) {
+        notify(errorMsg.substr(0, errorMsg.length - 1));
+    }
+    let isExists = existsPoint(dateInput.value, companyInput.value, costInput.value);
+    if (isExists) {
+        notify(DUPLICATE_ROW_ERROR);
+    }
+    if (isDateValid && isCompanyValid && isCostValid && !isExists) {
+        createRow(dateInput.value, companyInput.value, costInput.value);
+        closeModal();
+    }
+};
+
+document.onclick = function (event) {
+    let target = event.target;
+    if (editingCell) {
+        if (editingCell.contains(target)) return;
+        let msg = updateCell(editingCell);
+        if (msg) {
+            makeInvalid(editingCell);
+            if (!addBtn.contains(target)) {
+                notify(msg);
+            }
+            return;
+        } else {
+            unsetCellToEdit();
+        }
+    }
+    if (table.contains(target) && target.nodeName === 'TD') {
+        setCellToEdit(target);
+    }
+};
+
+// cells utils
+
+function updateCell(cell) {
+    let newValue = cell.childNodes[0].value;
+    if (newValue === editingValue) return '';
+    let classname = cell.className.split(' ')[0];
+    let row = cell.parentNode;
+    let rowDate =  row.childNodes[0].innerText;
+    let rowCompany = row.childNodes[1].innerText;
+    let rowCost = row.childNodes[2].innerText;
+    switch (classname) {
+        case 'date':
+            if (!validateDate(newValue)) {
+                return  DATE_FORMAT_ERROR;
+            }
+            if (existsPoint(rowDate, newValue, rowCost)) {
+                return  DUPLICATE_ROW_ERROR;
+            }
+            updatePointDate(editingValue, rowCompany, rowCost, newValue);
+            break;
+        case 'company':
+            if (!validateCompany(newValue)) {
+                return COMPANY_FORMAT_ERROR;
+            }
+            if (existsPoint(rowDate, newValue, rowCost)) {
+                return DUPLICATE_ROW_ERROR;
+            }
+            removePoint(rowDate, editingValue, rowCost);
+            createPoint(rowDate, newValue, rowCost);
+            break;
+        case 'cost':
+            if (!validateCost(newValue)) {
+                return COST_FORMAT_ERROR;
+            }
+            if (existsPoint(rowDate, rowCompany, newValue)) {
+                return DUPLICATE_ROW_ERROR;
+            }
+            updatePointCost(rowDate, rowCompany, editingValue, newValue);
+    }
+    chart.update();
+    return '';
+}
+
+function setCellToEdit(cell) {
+    makeValid(cell);
+    editingCell = cell;
+    editingValue = cell.innerText;
+    let input = document.createElement('input');
+    input.className = 'table_input';
+    input.value = editingCell.innerText;
+    editingCell.innerText = '';
+    editingCell.appendChild(input);
+    input.focus();
+}
+
+function unsetCellToEdit() {
+    clearValidationStyle(editingCell);
+    editingCell.innerText = editingCell.childNodes[0].value;
+    editingCell = undefined;
+    editingValue = undefined;
+}
+
+// table updating utils
+
 function createRow(date, company, cost) {
     let row = document.createElement('tr');
     row.appendChild(createCell(date, 'date'));
     row.appendChild(createCell(company, 'company'));
     row.appendChild(createCell(cost, 'cost'));
     createDeleteBtn(row);
-    let dataset = datasets.find(function (d) {
-        return d.label === company;
-    });
-    if (!dataset) {
-        let color = randColor();
-        dataset = {
-            label: company,
-            backgroundColor: color,
-            borderColor: color,
-            data: [],
-            fill: false
-        };
-        datasets.push(dataset);
-    }
-    dataset.data.push({
-        x: date,
-        y: cost
-    })
-    dataset.data.sort(dataSortCompareFunction);
+    createPoint(date, company, cost);
     chart.update();
-    return row;
-}
-
-function dataSortCompareFunction(d1, d2) {
-    let date1 = new Date(d1.x);
-    let date2 = new Date(d2.x);
-    if (date1 > date2) {
-        return 1;
-    }
-    if (date2 > date1) {
-        return -1;
-    }
-    return 0;
+    table.appendChild(row);
 }
 
 function createCell(content, classname) {
@@ -266,12 +370,8 @@ function createCell(content, classname) {
 function createDeleteBtn(row) {
     let img = document.createElement('img');
     img.setAttribute('src', 'pictures/delete_icon.png');
-    img.style.display = 'none';
-    img.style.width = '20px';
-    img.style.height = '100%';
-    img.addEventListener('click', function () {
-        removeRow(row);
-    });
+    img.className = 'delete_btn_img';
+    img.addEventListener('click', function () { removeRow(row); });
     let btn = document.createElement('button');
     btn.className = 'delete_btn';
     btn.appendChild(img);
@@ -279,12 +379,8 @@ function createDeleteBtn(row) {
     cell.className = 'delete_cell';
     cell.appendChild(btn);
     row.appendChild(cell);
-    row.onmouseover = function () {
-        img.style.display = 'block';
-    }
-    row.onmouseout = function () {
-        img.style.display = 'none';
-    };
+    row.onmouseover = function () { img.style.display = 'block'; }
+    row.onmouseout = function () { img.style.display = 'none'; };
 }
 
 function removeRow(row) {
@@ -294,107 +390,17 @@ function removeRow(row) {
             editingCell = undefined;
             editingValue = undefined;
         }
-        removeRowFromDataset(row);
+        removePoint(row.childNodes[0].innerText, row.childNodes[1].innerText, row.childNodes[2].innerText);
+        chart.update();
         table.removeChild(row);
     });
     row.className = 'remove_row_animation';
 }
 
-function removeRowFromDataset(row) {
-    let company = row.childNodes[1].innerText;
-    let date = row.childNodes[0].innerText;
-    let cost = row.childNodes[2].innerText;
-    let dataset = datasets.find(function (d) {
-        return d.label === company;
-    });
-    if (dataset.data.length === 1) {
-        datasets.splice(datasets.indexOf(dataset), 1);
-    } else {
-        dataset.data.splice(dataset.data.findIndex(function (point) {
-            return point.x === date && point.y == cost;
-        }), 1);
-    }
-    chart.update();
-}
+// table initialization
 
-function updateDataset(cell, prevValue) {
-    let classname = cell.className.split(' ')[0];
-    let input = cell.childNodes[0];
-    let row = cell.parentNode;
-    let dataset;
-    let index;
-    switch (classname) {
-        case 'date':
-            dataset = datasets.find(function (d) {
-                return d.label === row.childNodes[1].innerText;
-            });
-            index = dataset.data.findIndex(function (point) {
-                return point.x === prevValue && point.y == row.childNodes[2].innerText;
-            });
-            dataset.data[index].x = input.value;
-            dataset.data.sort(dataSortCompareFunction);
-            break;
-        case 'company':
-            let prevDataset = datasets.find(function (d) {
-                return d.label === prevValue;
-            });
-            if (prevDataset.data.length === 1) {
-                datasets.splice(datasets.findIndex(function (d) {
-                    return d.label === prevValue;
-                }), 1);
-            } else {
-                prevDataset.data.splice(prevDataset.data.findIndex(function (point) {
-                    return point.x === row.childNodes[0].innerText && point.y == row.childNodes[2];
-                }), 1);
-            }
-            let newDataset = datasets.find(function (d) {
-                return d.label === input.value;
-            });
-            if (!newDataset) {
-                let color = randColor();
-                newDataset = {
-                    label: input.value,
-                    backgroundColor: color,
-                    borderColor: color,
-                    data: [],
-                    fill: false
-                };
-                datasets.push(newDataset);
-            }
-            newDataset.data.push({
-                x: row.childNodes[0].innerText,
-                y: row.childNodes[2].innerText
-            });
-            newDataset.data.sort(dataSortCompareFunction);
-            break;
-        case 'cost':
-            dataset = datasets.find(function (d) {
-                return d.label === row.childNodes[1].innerText;
-            });
-            index = dataset.data.findIndex(function (point) {
-                return point.x === row.childNodes[0].innerText && point.y == prevValue;
-            });
-            dataset.data[index].y = input.value;
-            break;
-    }
-    chart.update();
-}
-
-let timeout;
-
-function notify(message) {
-    if (timeout) {
-        clearTimeout(timeout);
-    }
-    notificationLabel.innerText = message;
-    notificationBlock.style.display = 'flex';
-    timeout = setTimeout(function () {
-        notificationBlock.style.display = 'none';
-    }, 5000);
-}
-
-table.appendChild(createRow('07.01.2019', 'Автоваз', '2100'));
-table.appendChild(createRow('01.01.2019', 'Газпром', '2000'));
-table.appendChild(createRow('01.01.2019', 'Автоваз', '2500'));
-table.appendChild(createRow('05.01.2019', 'Сбербанк', '10000'));
-table.appendChild(createRow('10.01.2019', 'Газпром', '2500'));
+createRow('07.01.2019', 'Автоваз', '2100');
+createRow('01.01.2019', 'Газпром', '2000');
+createRow('01.01.2019', 'Автоваз', '2500');
+createRow('05.01.2019', 'Сбербанк', '10000');
+createRow('10.01.2019', 'Газпром', '2500');
