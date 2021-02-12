@@ -189,12 +189,6 @@ input:hover {
     }
 }
 
-#exists_error, #add_with_editing_error {
-    display: none;
-    color: #d06a6a;
-    text-align: center;
-}
-
 .valid_input {
     border: 5px solid #7bbf7b;
 }
@@ -206,4 +200,39 @@ input:hover {
 #chart {
     display: block;
     margin: 40px auto 0 auto;
+}
+
+#notification {
+    display: none;
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    max-width: 40%;
+    min-width: 160px;
+    min-height: 60px;
+    padding: 10px;
+    background-color: #c7e6fd;
+    border-color: dodgerblue;
+    border-radius: 8px;
+    border-style: solid;
+    border-width: 4px;
+    z-index: 2;
+    animation-name: open_notification;
+    animation-duration: 800ms;
+}
+
+#notification_label {
+    margin: auto;
+    color: dodgerblue;
+}
+
+@keyframes open_notification {
+    from {
+        bottom: -40px;
+        opacity: 0;
+    }
+    to {
+        bottom: 10px;
+        opacity: 1;
+    }
 }

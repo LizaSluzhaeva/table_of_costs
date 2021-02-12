@@ -1,3 +1,20 @@
+let table = document.querySelector('table');
+let modal = document.getElementById('modal');
+let addBtn = document.getElementById('add_btn');
+let closeBtn = document.getElementById('close_btn');
+let saveBtn = document.getElementById('save_btn');
+let dateInput = document.getElementById('input_date');
+let companyInput = document.getElementById('input_company');
+let costInput = document.getElementById('input_cost');
+let notificationBlock = document.getElementById('notification');
+let notificationLabel = document.getElementById('notification_label');
+
+const ADD_WHEN_EDITING_ERROR = 'Сначала завершите редактирование таблицы!';
+const DATE_FORMAT_ERROR = 'Дата должна соотвествовать формату дд.мм.гггг!';
+const COMPANY_FORMAT_ERROR = 'Название компании должно содержать хотя бы один символ!';
+const COST_FORMAT_ERROR = 'Цена должна быть положительным целым числом!';
+const DUPLICATE_ROW_ERROR = 'В таблице уже существует строка с такими значениями!';
+
 function randColor() {
     let r = Math.floor(Math.random() * (256)),
         g = Math.floor(Math.random() * (256)),
@@ -44,22 +61,10 @@ function existsElement(date, company, cost) {
     });
 }
 
-let table = document.querySelector('table');
-let modal = document.getElementById('modal');
-let addBtn = document.getElementById('add_btn');
-let closeBtn = document.getElementById('close_btn');
-let saveBtn = document.getElementById('save_btn');
-let dateInput = document.getElementById('input_date');
-let companyInput = document.getElementById('input_company');
-let costInput = document.getElementById('input_cost');
-let existsErrorMsg = document.getElementById('exists_error');
-let addWithEditingErrorMsg = document.getElementById('add_with_editing_error');
-
 addBtn.onclick = function () {
-    if (editingCell && !validateCell(editingCell)) {
-        addWithEditingErrorMsg.style.display = 'block';
+    if (editingCell && validateCell(editingCell)) {
+        notify(ADD_WHEN_EDITING_ERROR);
     } else {
-        addWithEditingErrorMsg.style.display = 'none';
         modal.style.display = 'block';
     }
 };
@@ -68,28 +73,33 @@ closeBtn.onclick = closeModal;
 
 saveBtn.onclick = function () {
     let isDateValid = validateDate(dateInput.value);
+    let errorMsg = '';
     if (isDateValid) {
         makeValid(dateInput);
     } else {
         makeInvalid(dateInput);
+        errorMsg += DATE_FORMAT_ERROR + '\n';
     }
     let isCompanyValid = validateCompany(companyInput.value);
     if (isCompanyValid) {
         makeValid(companyInput);
     } else {
         makeInvalid(companyInput);
+        errorMsg += COMPANY_FORMAT_ERROR + '\n';
     }
     let isCostValid = validateCost(costInput.value);
     if (isCostValid) {
         makeValid(costInput);
     } else {
-        makeInvalid(costInput)
+        makeInvalid(costInput);
+        errorMsg += COST_FORMAT_ERROR + '\n';
+    }
+    if (errorMsg) {
+        notify(errorMsg.substr(0, errorMsg.length - 1));
     }
     let isExists = existsElement(dateInput.value, companyInput.value, costInput.value);
     if (isExists) {
-        existsErrorMsg.style.display = 'block';
-    } else {
-        existsErrorMsg.style.display = 'none';
+        notify(DUPLICATE_ROW_ERROR);
     }
     if (isDateValid && isCompanyValid && isCostValid && !isExists) {
         table.appendChild(createRow(dateInput.value, companyInput.value, costInput.value));
@@ -109,7 +119,6 @@ function clearInput() {
     makeValid(dateInput);
     makeValid(companyInput);
     makeValid(costInput);
-    existsErrorMsg.style.display = 'none';
 }
 
 function makeValid(input) {
@@ -132,8 +141,12 @@ document.onclick = function (event) {
         if (target == editingCell || target == input) return;
         let classname = editingCell.className.split(' ')[0];
         if (input.value !== editingValue) {
-            if (!validateCell(editingCell)) {
+            let message = validateCell(editingCell);
+            if (message) {
                 makeInvalid(editingCell);
+                if (target !== addBtn && target !== addBtn.childNodes[0]) {
+                    notify(message);
+                }
                 return;
             }
             updateDataset(editingCell, editingValue);
@@ -143,7 +156,6 @@ document.onclick = function (event) {
         editingCell = undefined;
         editingValue = undefined;
     }
-    addWithEditingErrorMsg.style.display = 'none';
     if (!table.contains(target) || target.nodeName != 'TD') return;
     target.className += ' valid_input';
     editingCell = target;
@@ -162,15 +174,30 @@ function validateCell(cell) {
     let row = cell.parentNode;
     switch (classname) {
         case 'date':
-            return validateDate(input.value)
-                && !existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText);
+            if (!validateDate(input.value)) {
+                return DATE_FORMAT_ERROR;
+            }
+            if (existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText)) {
+                return DUPLICATE_ROW_ERROR;
+            }
+            break;
         case 'company':
-            return validateCompany(input.value)
-                && !existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText);
+            if (!validateCompany(input.value)) {
+                return COMPANY_FORMAT_ERROR;
+            }
+            if (existsElement(row.childNodes[0].innerText, input.value, row.childNodes[2].innerText)) {
+                return DUPLICATE_ROW_ERROR;
+            }
+            break;
         case 'cost':
-            return validateCost(input.value)
-                && !existsElement(row.childNodes[0].innerText, row.childNodes[1].innerText, input.value);
+            if (!validateCost(input.value)) {
+                return COST_FORMAT_ERROR;
+            }
+            if (existsElement(row.childNodes[0].innerText, row.childNodes[1].innerText, input.value)) {
+                return DUPLICATE_ROW_ERROR;
+            }
     }
+    return '';
 }
 
 function validateDate(value) {
@@ -266,7 +293,6 @@ function removeRow(row) {
         if (row.contains(editingCell)) {
             editingCell = undefined;
             editingValue = undefined;
-            addWithEditingErrorMsg.style.display = 'none';
         }
         removeRowFromDataset(row);
         table.removeChild(row);
@@ -313,7 +339,9 @@ function updateDataset(cell, prevValue) {
                 return d.label === prevValue;
             });
             if (prevDataset.data.length === 1) {
-                datasets.splice(datasets.findIndex(function (d) {return d.label === prevValue;}), 1);
+                datasets.splice(datasets.findIndex(function (d) {
+                    return d.label === prevValue;
+                }), 1);
             } else {
                 prevDataset.data.splice(prevDataset.data.findIndex(function (point) {
                     return point.x === row.childNodes[0].innerText && point.y == row.childNodes[2];
@@ -350,6 +378,19 @@ function updateDataset(cell, prevValue) {
             break;
     }
     chart.update();
+}
+
+let timeout;
+
+function notify(message) {
+    if (timeout) {
+        clearTimeout(timeout);
+    }
+    notificationLabel.innerText = message;
+    notificationBlock.style.display = 'flex';
+    timeout = setTimeout(function () {
+        notificationBlock.style.display = 'none';
+    }, 5000);
 }
 
 table.appendChild(createRow('07.01.2019', 'Автоваз', '2100'));
